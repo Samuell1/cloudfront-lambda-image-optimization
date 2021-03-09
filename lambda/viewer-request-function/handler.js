@@ -1,10 +1,7 @@
 const userAgent = require('useragent')
 const path = require('path')
-const querystring = require('querystring');
 
 const variables = {
-  allowedDimension : [ {w:100,h:100}, {w:200,h:200}, {w:300,h:300}, {w:400,h:400} ],
-  defaultDimension : {w:200,h:200},
   variance: 20,
   webpExtension: 'webp'
 };
@@ -12,10 +9,6 @@ const variables = {
 exports.handler = async (event, context, callback) => {
   const request = event.Records[0].cf.request
   const headers = request.headers
-
-  // parse the querystrings key-value pairs. In our case it would be d=100x100
-  const params = querystring.parse(request.querystring);
-  console.log('Query String', request.querystring)
 
   const userAgentString = headers['user-agent'] && headers['user-agent'][0] ? headers['user-agent'][0].value : null
   const agent = userAgent.lookup(userAgentString)
@@ -38,15 +31,9 @@ exports.handler = async (event, context, callback) => {
     value: fwdUri.substring(1)
   }]
 
-  if (supportingBrowser && params.d ) {
+  if (supportingBrowser) {
     console.log("Inside the browser")
     const fileFormat = path.extname(request.uri).replace('.', '')
-    // read the dimension parameter value = width x height and split it by 'x'
-    const dimensionMatch = params.d.split("x");
-
-    // set the width and height parameters
-    let width = dimensionMatch[0];
-    let height = dimensionMatch[1];
 
     const match = fwdUri.match(/(.*)\/(.*)\.(.*)/);
 
@@ -78,7 +65,6 @@ exports.handler = async (event, context, callback) => {
     let url = [];
     // build the new uri to be forwarded upstream
     url.push(prefix);
-    url.push(width+"x"+height);
 
     // check support for webp
     if (accept.includes(variables.webpExtension)) {
@@ -109,8 +95,6 @@ exports.handler = async (event, context, callback) => {
     fwdUri = fwdUri.replace(/(\.jpg|\.png|\.jpeg)$/g, '.webp')
     // final modified url is of format image.webp
     request.uri = fwdUri;
-    request.query = request.querystring
-    console.log('Final Request if params not present', request)
 
     return callback(null, request);
   }
